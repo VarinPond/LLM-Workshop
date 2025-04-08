@@ -8,9 +8,10 @@ A powerful Thai legal assistant with RAG techniques.
     ```
 - Install the package using pip:
     ```bash
-    pip install -r requirements.txt
+    
     git clone https://github.com/BetterACS/LawBuddy
     cd LawBuddy
+    pip install -r requirements.txt
     pip install -e .
     ```
 
