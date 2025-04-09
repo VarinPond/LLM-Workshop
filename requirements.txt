@@ -9,6 +9,7 @@
 # pandas
 # numpy
 
+gradio
 llama-index-core
 llama-index-llms-openai
 llama-index-llms-huggingface

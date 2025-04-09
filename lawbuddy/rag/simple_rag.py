@@ -7,6 +7,7 @@ from llama_index.readers.file import PagedCSVReader
 
 from lawbuddy.rag.base_pipeline import BasePipeline
 from lawbuddy.rag.types import QueryTransformType
+import time
 
 class SimpleRagPipeline(BasePipeline):
     VECTOR_SPACE_PATH = "spaces/simple_rag"
@@ -41,38 +42,58 @@ class SimpleRagPipeline(BasePipeline):
         super().load_vector_store(path)
         self.retriever = self.vector_store_index.as_retriever(similarity_top_k=10, llm=self.llm)
 
-    def query(self, query: str, query_transform_mode: QueryTransformType = QueryTransformType.SIMPLE, verbose: bool = False):
+    def query(self, query: str,
+          query_transform_mode: QueryTransformType = QueryTransformType.SIMPLE,
+          verbose: bool = False,
+          streaming: bool = True):
+        """
+        Query method modified for real-time streaming response.
+
+        Parameters:
+        query (str): The user query.
+        query_transform_mode (QueryTransformType): How to transform the query.
+        verbose (bool): If True, print intermediate steps.
+        streaming (bool): If True, return a streaming generator of tokens.
+        """
+        print("start query")
+        # Transform the query if needed.
         if query_transform_mode != QueryTransformType.CHUNK:
             query = self.transform_query(query, query_transform_mode)
             retrieved_nodes = self.retriever.retrieve(query)
             query_bundle = QueryBundle(query)
             reranked_nodes = self.reranker.postprocess_nodes(retrieved_nodes, query_bundle)
 
-            retrieved_contents = set([n.node.get_content() for n in reranked_nodes])
+            # Build the context from retrieved nodes.
+            retrieved_contents = {n.node.get_content() for n in reranked_nodes}
             context_str = "\n\n".join(list(retrieved_contents))
-            
-            response = self.llm.complete(self.SYSTEM_PROMPT.format(context_str=context_str, question=query))
-
         else:
             nodes = self.transform_query(query, query_transform_mode)
             retrieved_doc = []
             for sentence in nodes:
                 retrieved_doc.extend(self.retriever.retrieve(sentence.text))
-
             query_bundle = QueryBundle(query)
             reranked_nodes = self.reranker.postprocess_nodes(retrieved_doc, query_bundle)
-
-            retrieved_contents = set([n.node.get_content() for n in reranked_nodes])
+            retrieved_contents = {n.node.get_content() for n in reranked_nodes}
             context_str = "\n\n".join(list(retrieved_contents))
-
-            response = self.llm.complete(self.SYSTEM_PROMPT.format(context_str=context_str, question=query))
 
         if verbose:
             print("Retrieved nodes:".center(60, "-"))
             for node in reranked_nodes:
-                text = node.text
-                score = node.score
-                print(f"Score: {score}\n{text}\n")
-            print("-"*60)
+                # Assuming node.text and node.score are available.
+                print(f"Score: {node.score}\n{node.text}\n")
+            print("-" * 60)
 
-        return response
+        # Format the prompt using the system message and context.
+        formatted_prompt = self.SYSTEM_PROMPT.format(context_str=context_str, question=query)
+
+        # Depending on streaming flag, either iterate over the stream or do a full synchronous call.
+        if streaming:
+            # The llm.complete method is called with stream=True to enable token-by-token yielding.
+            response_stream = self.llm.complete(formatted_prompt, stream=True)
+            for token in response_stream:
+                print(token)
+                yield token  # Yield each token as soon as it is available.
+                time.sleep(1)
+        else:
+            response = self.llm.complete(formatted_prompt, stream=False)
+            return response
