@@ -1,0 +1,6 @@
+README.md
+setup.py
+lawbuddy.egg-info/PKG-INFO
+lawbuddy.egg-info/SOURCES.txt
+lawbuddy.egg-info/dependency_links.txt
+lawbuddy.egg-info/top_level.txt
