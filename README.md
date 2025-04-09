@@ -5,6 +5,7 @@ A powerful Thai legal assistant with RAG techniques.
 - Create an .env file with the following content:
     ```bash
     OPENAI_API_KEY=YOUR_OPENAI_API_KEY
+    TYPHOON_API_KEY=YOUR_TYPHOON_API_KEY
     ```
 - Install the package using pip:
     ```bash
